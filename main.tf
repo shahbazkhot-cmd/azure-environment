@@ -17,7 +17,7 @@ provider "azurerm" {
 # Rung 1: the container that holds everything
 resource "azurerm_resource_group" "learning" {
   name     = "learning-terraform"
-  location = "UK South"
+  location = var.location
 }
 
 # Rung 2: your first service — object storage (like an S3 bucket)
@@ -36,10 +36,7 @@ resource "azurerm_storage_container" "learning" {
   container_access_type = "private"
 }
 
-# Output = print a useful value after apply (like AWS "outputs")
-output "stage_account_name" {
-  value = azurerm_storage_account.learning.name
-}
+
 
 # Azure Virtual Network (VNet) - the network that holds your servers
 resource "azurerm_virtual_network" "main" {
@@ -60,4 +57,101 @@ resource "azurerm_subnet" "main" {
   resource_group_name  = azurerm_resource_group.learning.name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.0.1.0/24"]
+}
+
+# Azure Network Security Group (NSG) - controls traffic to/from the subnet
+resource "azurerm_network_security_group" "main" {
+  name                = "learning-nsg"
+  location            = azurerm_resource_group.learning.location
+  resource_group_name = azurerm_resource_group.learning.name
+
+  tags = {
+    environment = "Learning"
+    managed_by  = "Terraform"
+  }
+}
+
+# Azure network group rule - allows SSH traffic to the subnet
+resource "azurerm_network_security_rule" "allow_ssh" {
+  name                        = "Allow-SSH"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "22"
+  source_address_prefix       = "24.206.111.172/32"
+  destination_address_prefix  = "*"
+  network_security_group_name = azurerm_network_security_group.main.name
+  resource_group_name         = azurerm_resource_group.learning.name
+}
+
+# Associate the NSG with the subnet
+resource "azurerm_subnet_network_security_group_association" "main" {
+  subnet_id                 = azurerm_subnet.main.id
+  network_security_group_id = azurerm_network_security_group.main.id
+}
+
+# Azure Public IP - a public IP address for the VM
+resource "azurerm_public_ip" "main" {
+  name                = "learning-public-ip"
+  location            = azurerm_resource_group.learning.location
+  resource_group_name = azurerm_resource_group.learning.name
+  allocation_method   = "Static"
+
+  tags = {
+    environment = "Learning"
+    managed_by  = "Terraform"
+
+  }
+}
+# Azure Network Interface (NIC) - connects the VM to the subnet and public IP
+resource "azurerm_network_interface" "main" {
+  name                = "nic-vm"
+  location            = azurerm_resource_group.learning.location
+  resource_group_name = azurerm_resource_group.learning.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.main.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.main.id
+  }
+
+  tags = {
+    environment = "Learning"
+    managed_by  = "Terraform"
+  }
+}
+
+# Linux Virtual Machine - the actual server that will run your code
+resource "azurerm_linux_virtual_machine" "main" {
+  name                  = "learning-vm"
+  resource_group_name   = azurerm_resource_group.learning.name
+  location              = azurerm_resource_group.learning.location
+  size                  = "Standard_B2ts_v2"
+  admin_username        = "azureuser"
+  network_interface_ids = [azurerm_network_interface.main.id]
+
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+
+  tags = {
+    environment = "Learning"
+    managed_by  = "Terraform"
+  }
 }
