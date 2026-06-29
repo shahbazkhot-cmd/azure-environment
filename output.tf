@@ -6,3 +6,8 @@ output "stage_account_name" {
 output "vm_public_ip" {
   value = azurerm_public_ip.main.ip_address
 }
+
+output "website_url" {
+  value = "https://${azurerm_linux_web_app.main.default_hostname}"
+
+}

@@ -106,16 +106,65 @@ resource "azurerm_public_ip" "main" {
   }
 }
 # Azure Network Interface (NIC) - connects the VM to the subnet and public IP
-resource "azurerm_network_interface" "main" {
-  name                = "nic-vm"
+# resource "azurerm_network_interface" "main" {
+#   name                = "nic-vm"
+#   location            = azurerm_resource_group.learning.location
+#   resource_group_name = azurerm_resource_group.learning.name
+
+#   ip_configuration {
+#     name                          = "internal"
+#     subnet_id                     = azurerm_subnet.main.id
+#     private_ip_address_allocation = "Dynamic"
+#     public_ip_address_id          = azurerm_public_ip.main.id
+#   }
+
+#   tags = {
+#     environment = "Learning"
+#     managed_by  = "Terraform"
+#   }
+# }
+
+# Linux Virtual Machine - the actual server that will run your code
+# resource "azurerm_linux_virtual_machine" "main" {
+#   name                  = "learning-vm"
+#   resource_group_name   = azurerm_resource_group.learning.name
+#   location              = azurerm_resource_group.learning.location
+#   size                  = "Standard_B2ts_v2"
+#   admin_username        = "azureuser"
+#   network_interface_ids = [azurerm_network_interface.main.id]
+
+#   admin_ssh_key {
+#     username   = "azureuser"
+#     public_key = file("~/.ssh/id_rsa.pub")
+#   }
+
+#   os_disk {
+#     caching              = "ReadWrite"
+#     storage_account_type = "Standard_LRS"
+#   }
+
+#   source_image_reference {
+#     publisher = "Canonical"
+#     offer     = "ubuntu-24_04-lts"
+#     sku       = "server"
+#     version   = "latest"
+#   }
+
+#   tags = {
+#     environment = "Learning"
+#     managed_by  = "Terraform"
+#   }
+# }
+
+# App Service Plan - the "server" that runs your web app
+resource "azurerm_app_service_plan" "main" {
+  name                = "webapp-learning-shahbaz"
   location            = azurerm_resource_group.learning.location
   resource_group_name = azurerm_resource_group.learning.name
 
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.main.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.main.id
+  sku {
+    tier = "Basic"
+    size = "B1"
   }
 
   tags = {
@@ -124,30 +173,15 @@ resource "azurerm_network_interface" "main" {
   }
 }
 
-# Linux Virtual Machine - the actual server that will run your code
-resource "azurerm_linux_virtual_machine" "main" {
-  name                  = "learning-vm"
-  resource_group_name   = azurerm_resource_group.learning.name
-  location              = azurerm_resource_group.learning.location
-  size                  = "Standard_B2ts_v2"
-  admin_username        = "azureuser"
-  network_interface_ids = [azurerm_network_interface.main.id]
+# Web App - the actual web application that will run your code
+resource "azurerm_linux_web_app" "main" {
+  name                = "webapp-learning-shahbaz"
+  location            = azurerm_resource_group.learning.location
+  resource_group_name = azurerm_resource_group.learning.name
+  service_plan_id     = azurerm_app_service_plan.main.id
 
-  admin_ssh_key {
-    username   = "azureuser"
-    public_key = file("~/.ssh/id_rsa.pub")
-  }
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "ubuntu-24_04-lts"
-    sku       = "server"
-    version   = "latest"
+  site_config {
+    always_on = false
   }
 
   tags = {
