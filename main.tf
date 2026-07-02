@@ -157,14 +157,26 @@ resource "azurerm_public_ip" "main" {
 # }
 
 # App Service Plan - the "server" that runs your web app
-resource "azurerm_app_service_plan" "main" {
+resource "azurerm_service_plan" "main" {
+  name                = "asp-learning"
+  location            = azurerm_resource_group.learning.location
+  resource_group_name = azurerm_resource_group.learning.name
+  os_type             = "Linux"
+  sku_name            = "B1"
+}
+
+# Web App - the actual web application that will run your code
+resource "azurerm_linux_web_app" "main" {
   name                = "webapp-learning-shahbaz"
   location            = azurerm_resource_group.learning.location
   resource_group_name = azurerm_resource_group.learning.name
+  service_plan_id     = azurerm_service_plan.main.id
 
-  sku {
-    tier = "Basic"
-    size = "B1"
+  site_config {
+    always_on = false
+    application_stack {
+      python_version = "3.11"
+    }
   }
 
   tags = {
@@ -173,19 +185,47 @@ resource "azurerm_app_service_plan" "main" {
   }
 }
 
-# Web App - the actual web application that will run your code
-resource "azurerm_linux_web_app" "main" {
-  name                = "webapp-learning-shahbaz"
-  location            = azurerm_resource_group.learning.location
-  resource_group_name = azurerm_resource_group.learning.name
-  service_plan_id     = azurerm_app_service_plan.main.id
 
-  site_config {
-    always_on = false
-  }
+resource "random_password" "sql" {
+  length           = 16
+  special          = true
+  override_special = "!#$%"
+  min_upper        = 2
+  min_lower        = 2
+  min_numeric      = 2
+  min_special      = 2
+}
+
+resource "azurerm_mssql_server" "main" {
+  name                         = "sqlserver-learning-shahbaz1"
+  resource_group_name          = azurerm_resource_group.learning.name
+  location                     = var.sql_location    # ← was var.location
+  version                      = "12.0"
+  administrator_login          = "sqladmin"
+  administrator_login_password = random_password.sql.result
 
   tags = {
     environment = "Learning"
     managed_by  = "Terraform"
   }
+}
+
+resource "azurerm_mssql_database" "main" {
+  name        = "sqldb-learning-shahbaz1"
+  server_id   = azurerm_mssql_server.main.id
+  collation   = "SQL_Latin1_General_CP1_CI_AS"
+  sku_name    = "Basic"     # ← back to Basic, now that subscription is upgraded
+  max_size_gb = 2
+
+  tags = {
+    environment = "Learning"
+    managed_by  = "Terraform"
+  }
+}
+
+resource "azurerm_mssql_firewall_rule" "main" {
+  name             = "AllowMyIps"
+  server_id        = azurerm_mssql_server.main.id
+  start_ip_address = "24.206.111.172"
+  end_ip_address   = "24.206.111.172"
 }
