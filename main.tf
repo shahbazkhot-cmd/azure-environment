@@ -16,8 +16,9 @@ provider "azurerm" {
 
 # Rung 1: the container that holds everything
 resource "azurerm_resource_group" "learning" {
-  name     = "learning-terraform"
+  name     = var.resource_group_name
   location = var.location
+  tags     = local.common_tags
 }
 
 # Rung 2: your first service — object storage (like an S3 bucket)
@@ -40,35 +41,27 @@ resource "azurerm_storage_container" "learning" {
 
 # Azure Virtual Network (VNet) - the network that holds your servers
 resource "azurerm_virtual_network" "main" {
-  name                = "learning-vnet"
-  address_space       = ["10.0.0.0/16"]
+  name                = "${local.name_prefix}-vnet"
   location            = azurerm_resource_group.learning.location
   resource_group_name = azurerm_resource_group.learning.name
-
-  tags = {
-    environment = "Learning"
-    managed_by  = "Terraform"
-  }
+  address_space       = [var.vnet_address_space]
+  tags                = local.common_tags
 }
 
 # Azure Subnet - a smaller network inside the VNet
 resource "azurerm_subnet" "main" {
-  name                 = "learning-subnet"
+  name                 = "${local.name_prefix}-subnet"
   resource_group_name  = azurerm_resource_group.learning.name
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.0.1.0/24"]
+  address_prefixes     = [var.subnet_address_prefix]
 }
 
 # Azure Network Security Group (NSG) - controls traffic to/from the subnet
 resource "azurerm_network_security_group" "main" {
-  name                = "learning-nsg"
+  name                = "${local.name_prefix}-nsg"
   location            = azurerm_resource_group.learning.location
   resource_group_name = azurerm_resource_group.learning.name
-
-  tags = {
-    environment = "Learning"
-    managed_by  = "Terraform"
-  }
+  tags                = local.common_tags
 }
 
 # Azure network group rule - allows SSH traffic to the subnet
@@ -80,11 +73,12 @@ resource "azurerm_network_security_rule" "allow_ssh" {
   protocol                    = "Tcp"
   source_port_range           = "*"
   destination_port_range      = "22"
-  source_address_prefix       = "24.206.111.172/32"
+  source_address_prefix       = var.allowed_ssh_ip
   destination_address_prefix  = "*"
-  network_security_group_name = azurerm_network_security_group.main.name
   resource_group_name         = azurerm_resource_group.learning.name
+  network_security_group_name = azurerm_network_security_group.main.name
 }
+
 
 # Associate the NSG with the subnet
 resource "azurerm_subnet_network_security_group_association" "main" {
@@ -94,20 +88,16 @@ resource "azurerm_subnet_network_security_group_association" "main" {
 
 # Azure Public IP - a public IP address for the VM
 resource "azurerm_public_ip" "main" {
-  name                = "learning-public-ip"
+  name                = "${local.name_prefix}-public-ip"
   location            = azurerm_resource_group.learning.location
   resource_group_name = azurerm_resource_group.learning.name
   allocation_method   = "Static"
 
-  tags = {
-    environment = "Learning"
-    managed_by  = "Terraform"
-
-  }
+  tags = local.common_tags
 }
 # Azure Network Interface (NIC) - connects the VM to the subnet and public IP
 # resource "azurerm_network_interface" "main" {
-#   name                = "nic-vm"
+#   name                = "${local.name_prefix}-nic"
 #   location            = azurerm_resource_group.learning.location
 #   resource_group_name = azurerm_resource_group.learning.name
 
@@ -118,15 +108,12 @@ resource "azurerm_public_ip" "main" {
 #     public_ip_address_id          = azurerm_public_ip.main.id
 #   }
 
-#   tags = {
-#     environment = "Learning"
-#     managed_by  = "Terraform"
-#   }
+#   tags = local.common_tags
 # }
 
 # Linux Virtual Machine - the actual server that will run your code
 # resource "azurerm_linux_virtual_machine" "main" {
-#   name                  = "learning-vm"
+#   name                  = "${local.name_prefix}-vm"
 #   resource_group_name   = azurerm_resource_group.learning.name
 #   location              = azurerm_resource_group.learning.location
 #   size                  = "Standard_B2ts_v2"
@@ -150,15 +137,12 @@ resource "azurerm_public_ip" "main" {
 #     version   = "latest"
 #   }
 
-#   tags = {
-#     environment = "Learning"
-#     managed_by  = "Terraform"
-#   }
+#   tags = local.common_tags
 # }
 
 # App Service Plan - the "server" that runs your web app
 resource "azurerm_service_plan" "main" {
-  name                = "asp-learning"
+  name                = "${local.name_prefix}-asp"
   location            = azurerm_resource_group.learning.location
   resource_group_name = azurerm_resource_group.learning.name
   os_type             = "Linux"
@@ -167,7 +151,7 @@ resource "azurerm_service_plan" "main" {
 
 # Web App - the actual web application that will run your code
 resource "azurerm_linux_web_app" "main" {
-  name                = "webapp-learning-shahbaz"
+  name                = "${local.name_prefix}-webapp"
   location            = azurerm_resource_group.learning.location
   resource_group_name = azurerm_resource_group.learning.name
   service_plan_id     = azurerm_service_plan.main.id
@@ -179,10 +163,7 @@ resource "azurerm_linux_web_app" "main" {
     }
   }
 
-  tags = {
-    environment = "Learning"
-    managed_by  = "Terraform"
-  }
+  tags = local.common_tags
 }
 
 
@@ -199,28 +180,22 @@ resource "random_password" "sql" {
 resource "azurerm_mssql_server" "main" {
   name                         = "sqlserver-learning-shahbaz1"
   resource_group_name          = azurerm_resource_group.learning.name
-  location                     = var.sql_location    # ← was var.location
+  location                     = var.sql_location # ← was var.location
   version                      = "12.0"
   administrator_login          = "sqladmin"
   administrator_login_password = random_password.sql.result
 
-  tags = {
-    environment = "Learning"
-    managed_by  = "Terraform"
-  }
+  tags = local.common_tags
 }
 
 resource "azurerm_mssql_database" "main" {
-  name        = "sqldb-learning-shahbaz1"
+  name        = "${local.name_prefix}-sqldb"
   server_id   = azurerm_mssql_server.main.id
   collation   = "SQL_Latin1_General_CP1_CI_AS"
-  sku_name    = "Basic"     # ← back to Basic, now that subscription is upgraded
+  sku_name    = "Basic" # ← back to Basic, now that subscription is upgraded
   max_size_gb = 2
 
-  tags = {
-    environment = "Learning"
-    managed_by  = "Terraform"
-  }
+  tags = local.common_tags
 }
 
 resource "azurerm_mssql_firewall_rule" "main" {
