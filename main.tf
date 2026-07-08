@@ -141,30 +141,30 @@ resource "azurerm_public_ip" "main" {
 # }
 
 # App Service Plan - the "server" that runs your web app
-resource "azurerm_service_plan" "main" {
-  name                = "${local.name_prefix}-asp"
-  location            = azurerm_resource_group.learning.location
-  resource_group_name = azurerm_resource_group.learning.name
-  os_type             = "Linux"
-  sku_name            = "B1"
-}
+# resource "azurerm_service_plan" "main" {
+#   name                = "${local.name_prefix}-asp"
+#   location            = azurerm_resource_group.learning.location
+#   resource_group_name = azurerm_resource_group.learning.name
+#   os_type             = "Linux"
+#   sku_name            = "B1"
+# }
 
-# Web App - the actual web application that will run your code
-resource "azurerm_linux_web_app" "main" {
-  name                = "${local.name_prefix}-webapp"
-  location            = azurerm_resource_group.learning.location
-  resource_group_name = azurerm_resource_group.learning.name
-  service_plan_id     = azurerm_service_plan.main.id
+# # Web App - the actual web application that will run your code
+# resource "azurerm_linux_web_app" "main" {
+#   name                = "${local.name_prefix}-webapp"
+#   location            = azurerm_resource_group.learning.location
+#   resource_group_name = azurerm_resource_group.learning.name
+#   service_plan_id     = azurerm_service_plan.main.id
 
-  site_config {
-    always_on = false
-    application_stack {
-      python_version = "3.11"
-    }
-  }
+#   site_config {
+#     always_on = false
+#     application_stack {
+#       python_version = "3.11"
+#     }
+#   }
 
-  tags = local.common_tags
-}
+#   tags = local.common_tags
+# }
 
 
 resource "random_password" "sql" {
@@ -177,30 +177,30 @@ resource "random_password" "sql" {
   min_special      = 2
 }
 
-resource "azurerm_mssql_server" "main" {
-  name                         = "sqlserver-learning-shahbaz1"
-  resource_group_name          = azurerm_resource_group.learning.name
-  location                     = var.sql_location # ← was var.location
-  version                      = "12.0"
-  administrator_login          = "sqladmin"
-  administrator_login_password = random_password.sql.result
+# resource "azurerm_mssql_server" "main" {
+#   name                         = "sqlserver-learning-shahbaz1"
+#   resource_group_name          = azurerm_resource_group.learning.name
+#   location                     = var.sql_location # ← was var.location
+#   version                      = "12.0"
+#   administrator_login          = "sqladmin"
+#   administrator_login_password = random_password.sql.result
 
-  tags = local.common_tags
-}
+#   tags = local.common_tags
+# }
 
-resource "azurerm_mssql_database" "main" {
-  name        = "${local.name_prefix}-sqldb"
-  server_id   = azurerm_mssql_server.main.id
-  collation   = "SQL_Latin1_General_CP1_CI_AS"
-  sku_name    = "Basic" # ← back to Basic, now that subscription is upgraded
-  max_size_gb = 2
+# resource "azurerm_mssql_database" "main" {
+#   name        = "${local.name_prefix}-sqldb"
+#   server_id   = azurerm_mssql_server.main.id
+#   collation   = "SQL_Latin1_General_CP1_CI_AS"
+#   sku_name    = "Basic" # ← back to Basic, now that subscription is upgraded
+#   max_size_gb = 2
 
-  tags = local.common_tags
-}
+#   tags = local.common_tags
+# }
 
-resource "azurerm_mssql_firewall_rule" "main" {
-  name             = "AllowMyIps"
-  server_id        = azurerm_mssql_server.main.id
-  start_ip_address = "24.206.111.172"
-  end_ip_address   = "24.206.111.172"
-}
+# resource "azurerm_mssql_firewall_rule" "main" {
+#   name             = "AllowMyIps"
+#   server_id        = azurerm_mssql_server.main.id
+#   start_ip_address = "24.206.111.172"
+#   end_ip_address   = "24.206.111.172"
+# }
