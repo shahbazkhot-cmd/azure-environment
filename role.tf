@@ -27,7 +27,7 @@ resource "azurerm_role_assignment" "storage_contributor" {
 
 resource "azurerm_role_definition" "vm_operator" {
   name        = "VM Operator - Learning"
-  scope       = azurerm_resource_group.learning.id  
+  scope       = azurerm_resource_group.learning.id
   description = "Can start, stop, and restart VMs but cannot create or delete them"
 
   permissions {
