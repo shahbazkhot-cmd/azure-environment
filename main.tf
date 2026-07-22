@@ -140,6 +140,14 @@ resource "azurerm_public_ip" "main" {
 #   tags = local.common_tags
 # }
 
+# resource "azurerm_backup_protected_vm" "main" {
+#   resource_group_name = azurerm_resource_group.learning.name
+#   recovery_vault_name = azurerm_recovery_services_vault.main.name
+#   source_vm_id        = azurerm_linux_virtual_machine.main.id
+#   backup_policy_id    = azurerm_backup_policy_vm.daily.id
+# }
+
+
 # App Service Plan - the "server" that runs your web app
 # resource "azurerm_service_plan" "main" {
 #   name                = "${local.name_prefix}-asp"
